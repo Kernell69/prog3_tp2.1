@@ -1,3 +1,4 @@
+// Clase Card
 class Card {
     constructor(name, img) {
         this.name = name;
@@ -22,6 +23,15 @@ class Card {
         return cardElement;
     }
 
+    toggleFlip() {
+        this.isFlipped = !this.isFlipped;
+        if (this.isFlipped) {
+            this.#flip();
+        } else {
+            this.#unflip();
+        }
+    }
+
     #flip() {
         const cardElement = this.element.querySelector(".card");
         cardElement.classList.add("flipped");
@@ -31,8 +41,13 @@ class Card {
         const cardElement = this.element.querySelector(".card");
         cardElement.classList.remove("flipped");
     }
+
+    matches(otherCard) {
+        return this.name === otherCard.name;
+    }
 }
 
+// Clase Board
 class Board {
     constructor(cards) {
         this.cards = cards;
@@ -74,8 +89,29 @@ class Board {
             this.onCardClick(card);
         }
     }
+
+    shuffleCards() {
+        for (let i = this.cards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+        }
+    }
+
+    reset() {
+        this.shuffleCards();
+        this.render();
+    }
+
+    flipDownAllCards() {
+        this.cards.forEach((card) => {
+            if (card.isFlipped) {
+                card.toggleFlip();
+            }
+        });
+    }
 }
 
+// Clase MemoryGame
 class MemoryGame {
     constructor(board, flipDuration = 500) {
         this.board = board;
@@ -101,6 +137,31 @@ class MemoryGame {
                 setTimeout(() => this.checkForMatch(), this.flipDuration);
             }
         }
+    }
+
+    checkForMatch() {
+        const [card1, card2] = this.flippedCards;
+        if (card1.matches(card2)) {
+            this.matchedCards.push(card1, card2);
+            this.flippedCards = [];
+
+            if (this.matchedCards.length === this.board.cards.length) {
+                alert("¡Has ganado!");
+            }
+        } else {
+            setTimeout(() => {
+                card1.toggleFlip();
+                card2.toggleFlip();
+                this.flippedCards = [];
+            }, this.flipDuration);
+        }
+    }
+
+    resetGame() {
+        this.board.flipDownAllCards();
+        this.matchedCards = [];
+        this.flippedCards = [];
+        this.board.reset();
     }
 }
 
