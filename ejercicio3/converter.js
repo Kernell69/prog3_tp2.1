@@ -6,11 +6,70 @@ class Currency {
 }
 
 class CurrencyConverter {
-    constructor() {}
+    constructor(apiUrl) {
+        this.apiUrl = apiUrl;
+        this.currencies = [];
+    }
 
-    getCurrencies(apiUrl) {}
+    async getCurrencies() {
+        const url = `${this.apiUrl}/currencies`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            this.currencies = Object.keys(data).map((code) => {
+                return new Currency(code, data[code]);
+            });
+        } catch (error) {
+            console.error('Error fetching currencies:', error);
+        }
+    }
 
-    convertCurrency(amount, fromCurrency, toCurrency) {}
+    async convertCurrency(amount, fromCurrency, toCurrency) {
+        const url = `${this.apiUrl}/latest?amount=${amount}&from=${fromCurrency.code}&to=${toCurrency.code}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.rates[toCurrency.code];
+        } catch (error) {
+            console.error('Error converting currency:', error);
+            return null;
+        }
+    }
+
+    async getExchangeRateOnDate(date, baseCurrency, targetCurrency) {
+        const formattedDate = date.toISOString().split('T')[0]; // Convert date to YYYY-MM-DD format
+        const url = `${this.apiUrl}/${formattedDate}?from=${baseCurrency.code}&to=${targetCurrency.code}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.rates[targetCurrency.code];
+        } catch (error) {
+            console.error(`Error fetching exchange rate for ${formattedDate}:`, error);
+            return null;
+        }
+    }
+
+    async getExchangeRateToday(baseCurrency, targetCurrency) {
+        const today = new Date();
+        return this.getExchangeRateOnDate(today, baseCurrency, targetCurrency);
+    }
+
+    async getExchangeRateYesterday(baseCurrency, targetCurrency) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return this.getExchangeRateOnDate(yesterday, baseCurrency, targetCurrency);
+    }
+
+    async getExchangeRateDifference(baseCurrency, targetCurrency) {
+        const rateToday = await this.getExchangeRateToday(baseCurrency, targetCurrency);
+        const rateYesterday = await this.getExchangeRateYesterday(baseCurrency, targetCurrency);
+
+        if (rateToday !== null && rateYesterday !== null) {
+            return rateToday - rateYesterday;
+        } else {
+            return null;
+        }
+    }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -48,6 +107,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             } son ${convertedAmount.toFixed(2)} ${toCurrency.code}`;
         } else {
             resultDiv.textContent = "Error al realizar la conversión.";
+        }
+
+        const difference = await converter.getExchangeRateDifference(fromCurrency, toCurrency);
+        if (difference !== null) {
+            resultDiv.textContent += `\nLa diferencia entre las tasas de cambio entre las monedas con respecto a hoy y ayer es de: ${difference.toFixed(6)}`;
+        } else {
+            resultDiv.textContent += "\nError al obtener la diferencia entre tasas de cambio.";
         }
     });
 
